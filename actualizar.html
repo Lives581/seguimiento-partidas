@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Actualizar Partidas — LIVES</title>
+<style>
+  :root{
+    --header:#0E3B36;
+    --accent:#10B981;
+    --alerta:#DC2626;
+    --monetario:#F59E0B;
+    --fondo:#F1F6F4;
+    --texto:#1F2937;
+    --borde:#D9E2E0;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; background:var(--fondo); color:var(--texto); }
+  header{ background:var(--header); color:#fff; padding:18px 24px; }
+  header h1{ margin:0; font-size:20px; }
+  header .sub{ font-size:12px; opacity:.85; }
+  #configBar{ background:#fff3cd; color:#7a5b00; padding:8px 24px; font-size:13px; display:none; }
+  .wrap{ padding:18px 24px; max-width:1100px; margin:0 auto; }
+  .usuario-bar{
+    background:#fff; border:1px solid var(--borde); border-radius:10px; padding:12px 16px;
+    margin-bottom:16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;
+  }
+  .usuario-bar input{ padding:7px 8px; border:1px solid var(--borde); border-radius:6px; font-size:13px; min-width:200px; }
+  .filtros{
+    background:#fff; border:1px solid var(--borde); border-radius:10px;
+    padding:12px 16px; margin-bottom:16px; display:flex; gap:12px; flex-wrap:wrap; align-items:end;
+  }
+  .filtros .campo{ display:flex; flex-direction:column; gap:4px; font-size:12px; color:#444; }
+  .filtros select, .filtros input[type=text]{ padding:7px 8px; border:1px solid var(--borde); border-radius:6px; font-size:13px; min-width:140px; }
+  .filtros button{ background:var(--accent); color:#fff; border:none; border-radius:6px; padding:8px 14px; font-size:13px; cursor:pointer; height:34px; }
+  .tarjeta{
+    background:#fff; border:1px solid var(--borde); border-radius:10px; padding:14px 16px; margin-bottom:12px;
+  }
+  .tarjeta .top{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+  .tarjeta .info{ font-size:13px; line-height:1.5; }
+  .tarjeta .info b{ color:var(--header); }
+  .badge{ display:inline-block; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700; color:#fff; }
+  .b-urgente{ background:var(--alerta); }
+  .b-p1{ background:var(--monetario); }
+  .b-p2{ background:#0E7490; }
+  .b-p3{ background:#6B7280; }
+  .acciones{ display:flex; gap:24px; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px dashed var(--borde); }
+  .accion-grupo{ display:flex; flex-direction:column; gap:6px; }
+  .accion-grupo .titulo{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:#556; }
+  .btn-set{ display:flex; gap:6px; flex-wrap:wrap; }
+  .btn-op{
+    border:1px solid var(--borde); background:#fff; border-radius:6px; padding:6px 10px;
+    font-size:12px; cursor:pointer; color:#333;
+  }
+  .btn-op.activo-pendiente{ background:#9CA3AF; color:#fff; border-color:#9CA3AF; }
+  .btn-op.activo-interna{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .btn-op.activo-cliente{ background:#0EA5E9; color:#fff; border-color:#0EA5E9; }
+  .btn-op.activo-si{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .btn-op:disabled{ opacity:.5; cursor:wait; }
+  .estado-msg{ padding:40px; text-align:center; color:#667; }
+  .toast{
+    position:fixed; bottom:20px; right:20px; background:var(--header); color:#fff;
+    padding:10px 16px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .3s; pointer-events:none;
+  }
+  .toast.show{ opacity:1; }
+  .toast.error{ background:var(--alerta); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>✅ Actualizar Partidas</h1>
+  <div class="sub">Calidad marca Estado de Aprobación · Producción Textil marca Llegada Confirmada</div>
+</header>
+
+<div id="configBar">
+  ⚠️ Falta configurar <code>APPS_SCRIPT_URL</code> en este archivo HTML (ver LEEME_Seguimiento_Partidas.md).
+</div>
+
+<div class="wrap">
+
+  <div class="usuario-bar">
+    <label style="font-size:13px;">Tu nombre (para registrar quién actualizó):</label>
+    <input type="text" id="usuarioInput" placeholder="Ej: Oscar Cornejo">
+  </div>
+
+  <div class="filtros">
+    <div class="campo">
+      <label>Grupo</label>
+      <select id="fGrupo"><option value="">Todos</option></select>
+    </div>
+    <div class="campo">
+      <label>Ruta</label>
+      <select id="fRuta"><option value="">Todas</option></select>
+    </div>
+    <div class="campo">
+      <label>Buscar</label>
+      <input type="text" id="fBuscar" placeholder="Partida / tela / color">
+    </div>
+    <button onclick="cargarDatos()">↻ Recargar</button>
+  </div>
+
+  <div id="lista">
+    <div class="estado-msg">Cargando datos...</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ======================================================================
+// CONFIGURACIÓN: pega aquí la URL de tu Apps Script Web App (doGet/doPost)
+// Extensiones > Apps Script > Implementar > Nueva implementación > Aplicación web
+// Debe ser LA MISMA URL que en seguimiento.html
+// ======================================================================
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkkOKzEAW9AJVIim0QOzSzB6Ec4hfRU7ZKb64-UF0pPZjRACjcPRD7tYwn6mfJa6Da9g/exec";
+
+let DATA = [];
+
+function getUsuario(){
+  let u = document.getElementById('usuarioInput').value.trim();
+  if (!u) u = localStorage.getItem('sp_usuario') || '';
+  return u;
+}
+document.getElementById('usuarioInput').addEventListener('change', function(){
+  localStorage.setItem('sp_usuario', this.value.trim());
+});
+document.getElementById('usuarioInput').value = localStorage.getItem('sp_usuario') || '';
+
+function showToast(msg, isError){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(()=> t.classList.remove('show'), 2500);
+}
+
+async function cargarDatos(){
+  document.getElementById('lista').innerHTML = '<div class="estado-msg">Cargando datos...</div>';
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf('PEGA_AQUI') >= 0){
+    document.getElementById('configBar').style.display = 'block';
+    document.getElementById('lista').innerHTML = '<div class="estado-msg">Configura APPS_SCRIPT_URL para ver datos.</div>';
+    return;
+  }
+  try{
+    const res = await fetch(APPS_SCRIPT_URL + '?_=' + Date.now());
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || 'Error desconocido');
+    DATA = (json.rows || []).filter(r => r.Estado === 'Activo');
+    poblarFiltros();
+    render();
+  }catch(err){
+    document.getElementById('lista').innerHTML = '<div class="estado-msg">Error cargando datos: '+err.message+'</div>';
+  }
+}
+
+function poblarFiltros(){
+  const grupos = [...new Set(DATA.map(r=>r.Grupo).filter(Boolean))].sort();
+  const rutas = [...new Set(DATA.map(r=>r.Ruta).filter(Boolean))].sort();
+  const selG = document.getElementById('fGrupo');
+  const selR = document.getElementById('fRuta');
+  if (selG.options.length <= 1) grupos.forEach(g=>{ const o=document.createElement('option'); o.value=g; o.textContent=g; selG.appendChild(o); });
+  if (selR.options.length <= 1) rutas.forEach(r=>{ const o=document.createElement('option'); o.value=r; o.textContent=r; selR.appendChild(o); });
+}
+
+function badgePrioridad(p){
+  if (p === 'URGENTE') return '<span class="badge b-urgente">URGENTE</span>';
+  if (p === '1') return '<span class="badge b-p1">1</span>';
+  if (p === '2') return '<span class="badge b-p2">2</span>';
+  if (p === '3') return '<span class="badge b-p3">3</span>';
+  return '';
+}
+
+function render(){
+  const vGrupo = document.getElementById('fGrupo').value;
+  const vRuta = document.getElementById('fRuta').value;
+  const vBuscar = document.getElementById('fBuscar').value.trim().toLowerCase();
+
+  let filtradas = DATA.filter(r=>{
+    if (vGrupo && r.Grupo !== vGrupo) return false;
+    if (vRuta && r.Ruta !== vRuta) return false;
+    if (vBuscar){
+      const hay = [r.Partida, r.CodTela, r.DescTela, r.CodColor, r.DescColor].some(v => String(v||'').toLowerCase().includes(vBuscar));
+      if (!hay) return false;
+    }
+    return true;
+  });
+
+  const orden = {'URGENTE':0, '1':1, '2':2, '3':3, '':4};
+  filtradas.sort((a,b)=> (orden[a.Prioridad] ?? 4) - (orden[b.Prioridad] ?? 4));
+
+  const lista = document.getElementById('lista');
+  if (filtradas.length === 0){
+    lista.innerHTML = '<div class="estado-msg">No hay partidas con esos filtros.</div>';
+    return;
+  }
+
+  lista.innerHTML = filtradas.map(r => {
+    const est = r.EstadoAprobacion || 'Pendiente';
+    const lleg = r.LlegadaConfirmada || 'Pendiente';
+    return `
+    <div class="tarjeta" data-id="${encodeURIComponent(r.ID)}">
+      <div class="top">
+        <div>${badgePrioridad(r.Prioridad)} <b>${r.Partida||''}</b> — ${r.Grupo||''}</div>
+        <div style="font-size:12px;color:#667;">Fecha Hito: ${r.FecHito||'-'}</div>
+      </div>
+      <div class="info">
+        <b>${r.CodTela||''}</b> ${r.DescTela||''}<br>
+        <b>${r.CodColor||''}</b> ${r.DescColor||''} · ${r.Kg||''} kg · Ruta: ${r.Ruta||''} · Estilo: ${r.Estilo||''}
+      </div>
+      <div class="acciones">
+        <div class="accion-grupo">
+          <div class="titulo">Calidad · Estado Aprobación</div>
+          <div class="btn-set">
+            <button class="btn-op ${est==='Pendiente'?'activo-pendiente':''}" onclick="setAprobacion(this,'Pendiente')">Pendiente</button>
+            <button class="btn-op ${est==='Aprobación Interna'?'activo-interna':''}" onclick="setAprobacion(this,'Aprobación Interna')">Aprob. Interna</button>
+            <button class="btn-op ${est==='Aprobación Cliente'?'activo-cliente':''}" onclick="setAprobacion(this,'Aprobación Cliente')">Aprob. Cliente</button>
+          </div>
+        </div>
+        <div class="accion-grupo">
+          <div class="titulo">Producción Textil · Llegada</div>
+          <div class="btn-set">
+            <button class="btn-op ${lleg!=='Sí'?'activo-pendiente':''}" onclick="setLlegada(this,false)">Pendiente</button>
+            <button class="btn-op ${lleg==='Sí'?'activo-si':''}" onclick="setLlegada(this,true)">Confirmada ✓</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function postUpdate(payload){
+  const usuario = getUsuario();
+  if (!usuario){
+    showToast('Escribe tu nombre arriba antes de actualizar', true);
+    return {ok:false};
+  }
+  payload.usuario = usuario;
+  try{
+    const res = await fetch(APPS_SCRIPT_URL, { method:'POST', body: JSON.stringify(payload) });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || 'Error desconocido');
+    return json;
+  }catch(err){
+    showToast('Error: ' + err.message, true);
+    return {ok:false};
+  }
+}
+
+async function setAprobacion(btn, estado){
+  const tarjeta = btn.closest('.tarjeta');
+  const id = decodeURIComponent(tarjeta.dataset.id);
+  const grupo = tarjeta.querySelectorAll('.btn-set')[0].querySelectorAll('button');
+  grupo.forEach(b=>b.disabled=true);
+  const r = await postUpdate({ action:'updateAprobacion', id, estado });
+  grupo.forEach(b=>b.disabled=false);
+  if (r.ok){
+    grupo.forEach(b=>{ b.classList.remove('activo-pendiente','activo-interna','activo-cliente'); });
+    if (estado==='Pendiente') btn.classList.add('activo-pendiente');
+    if (estado==='Aprobación Interna') btn.classList.add('activo-interna');
+    if (estado==='Aprobación Cliente') btn.classList.add('activo-cliente');
+    showToast('Actualizado: ' + estado);
+  }
+}
+
+async function setLlegada(btn, confirmado){
+  const tarjeta = btn.closest('.tarjeta');
+  const id = decodeURIComponent(tarjeta.dataset.id);
+  const grupo = tarjeta.querySelectorAll('.btn-set')[1].querySelectorAll('button');
+  grupo.forEach(b=>b.disabled=true);
+  const r = await postUpdate({ action:'updateLlegada', id, confirmado });
+  grupo.forEach(b=>b.disabled=false);
+  if (r.ok){
+    grupo.forEach(b=>{ b.classList.remove('activo-pendiente','activo-si'); });
+    btn.classList.add(confirmado ? 'activo-si' : 'activo-pendiente');
+    showToast(confirmado ? 'Llegada confirmada' : 'Marcado como pendiente');
+  }
+}
+
+['fGrupo','fRuta'].forEach(id=> document.getElementById(id).addEventListener('change', render));
+document.getElementById('fBuscar').addEventListener('input', render);
+
+cargarDatos();
+</script>
+</body>
+</html>

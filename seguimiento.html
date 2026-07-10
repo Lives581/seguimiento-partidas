@@ -98,16 +98,6 @@
 
   <div class="filtros">
     <div class="campo">
-      <label>Vencimiento</label>
-      <select id="fVencimiento">
-        <option value="">Todos</option>
-        <option value="hoy">Hoy</option>
-        <option value="semana">Esta semana</option>
-        <option value="mes">Este mes</option>
-        <option value="vencidas">Vencidas (urgente)</option>
-      </select>
-    </div>
-    <div class="campo">
       <label>Grupo</label>
       <select id="fGrupo"><option value="">Todos</option></select>
     </div>
@@ -143,7 +133,7 @@
       </label>
     </div>
     <button class="secundario" onclick="cargarDatos()">↻ Recargar</button>
-    <button onclick="window.print()">🖨 Imprimir</button>
+    <button onclick="exportarCSV()">⬇ Exportar</button>
   </div>
 
   <div class="tablewrap">
@@ -163,11 +153,10 @@
           <th>Fecha Hito</th>
           <th>Aprobación</th>
           <th>Llegada</th>
-          <th>Estado</th>
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="14" class="estado-msg">Cargando datos...</td></tr>
+        <tr><td colspan="13" class="estado-msg">Cargando datos...</td></tr>
       </tbody>
     </table>
   </div>
@@ -184,22 +173,23 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkkOKzEAW9AJVI
 let DATA = [];
 
 async function cargarDatos(){
-  document.getElementById('tbody').innerHTML = '<tr><td colspan="14" class="estado-msg">Cargando datos...</td></tr>';
+  document.getElementById('tbody').innerHTML = '<tr><td colspan="13" class="estado-msg">Cargando datos...</td></tr>';
   if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf('PEGA_AQUI') >= 0){
     document.getElementById('configBar').style.display = 'block';
-    document.getElementById('tbody').innerHTML = '<tr><td colspan="14" class="estado-msg">Configura APPS_SCRIPT_URL para ver datos.</td></tr>';
+    document.getElementById('tbody').innerHTML = '<tr><td colspan="13" class="estado-msg">Configura APPS_SCRIPT_URL para ver datos.</td></tr>';
     return;
   }
   try{
     const res = await fetch(APPS_SCRIPT_URL + '?_=' + Date.now());
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || 'Error desconocido');
-    DATA = json.rows || [];
+    // Los observadores solo ven las partidas que Alice publicó explícitamente
+    DATA = (json.rows || []).filter(r => r.VisibleObservadores === 'Sí');
     poblarFiltros();
     render();
     document.getElementById('lastUpdate').textContent = 'Actualizado: ' + new Date().toLocaleString('es-PE');
   }catch(err){
-    document.getElementById('tbody').innerHTML = '<tr><td colspan="14" class="estado-msg">Error cargando datos: '+err.message+'</td></tr>';
+    document.getElementById('tbody').innerHTML = '<tr><td colspan="13" class="estado-msg">Error cargando datos: '+err.message+'</td></tr>';
   }
 }
 
@@ -214,22 +204,6 @@ function poblarFiltros(){
   if (selR.options.length <= 1){
     rutas.forEach(r=>{ const o=document.createElement('option'); o.value=r; o.textContent=r; selR.appendChild(o); });
   }
-}
-
-function dentroDeRango(fecHitoStr, modo){
-  if (!fecHitoStr) return modo==='';
-  const hoy = new Date(); hoy.setHours(0,0,0,0);
-  const fh = new Date(fecHitoStr + 'T00:00:00');
-  if (modo === 'hoy') return fh.getTime() === hoy.getTime();
-  if (modo === 'vencidas') return fh < hoy;
-  if (modo === 'semana'){
-    const fin = new Date(hoy); fin.setDate(fin.getDate()+7);
-    return fh >= hoy && fh <= fin;
-  }
-  if (modo === 'mes'){
-    return fh.getFullYear()===hoy.getFullYear() && fh.getMonth()===hoy.getMonth();
-  }
-  return true;
 }
 
 function badgePrioridad(p){
@@ -249,8 +223,9 @@ function badgeLlegada(l){
   return '<span class="badge b-no">PENDIENTE</span>';
 }
 
+let ULTIMO_FILTRADO = [];
+
 function render(){
-  const vVenc = document.getElementById('fVencimiento').value;
   const vGrupo = document.getElementById('fGrupo').value;
   const vRuta = document.getElementById('fRuta').value;
   const vAprob = document.getElementById('fAprobacion').value;
@@ -264,7 +239,6 @@ function render(){
     if (vRuta && r.Ruta !== vRuta) return false;
     if (vAprob && (r.EstadoAprobacion || 'Pendiente') !== vAprob) return false;
     if (vLleg && (r.LlegadaConfirmada || 'Pendiente') !== vLleg) return false;
-    if (vVenc && !dentroDeRango(r.FecHito, vVenc)) return false;
     if (vBuscar){
       const hay = [r.Partida, r.CodTela, r.DescTela, r.CodColor, r.DescColor, r.Estilo]
         .some(v => String(v||'').toLowerCase().includes(vBuscar));
@@ -277,9 +251,11 @@ function render(){
   const orden = {'URGENTE':0, '1':1, '2':2, '3':3, '':4};
   filtradas.sort((a,b)=> (orden[a.Prioridad] ?? 4) - (orden[b.Prioridad] ?? 4));
 
+  ULTIMO_FILTRADO = filtradas;
+
   const tbody = document.getElementById('tbody');
   if (filtradas.length === 0){
-    tbody.innerHTML = '<tr><td colspan="14" class="estado-msg">No hay partidas con esos filtros.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" class="estado-msg">No hay partidas con esos filtros.</td></tr>';
   } else {
     tbody.innerHTML = filtradas.map(r => `
       <tr>
@@ -296,7 +272,6 @@ function render(){
         <td>${r.FecHito||''}</td>
         <td>${badgeAprob(r.EstadoAprobacion)}</td>
         <td>${badgeLlegada(r.LlegadaConfirmada)}</td>
-        <td>${r.Estado==='Cerrado' ? '<span class="badge b-cerrado">CERRADO</span>' : 'Activo'}</td>
       </tr>
     `).join('');
   }
@@ -316,10 +291,35 @@ function render(){
   `;
 }
 
-['fVencimiento','fGrupo','fRuta','fAprobacion','fLlegada','fSoloActivas'].forEach(id=>{
+['fGrupo','fRuta','fAprobacion','fLlegada','fSoloActivas'].forEach(id=>{
   document.getElementById(id).addEventListener('change', render);
 });
 document.getElementById('fBuscar').addEventListener('input', render);
+
+function exportarCSV(){
+  const cols = ['Prioridad','Grupo','Partida','CodTela','DescTela','CodColor','DescColor','Kg','Estilo','Ruta','FecHito','EstadoAprobacion','LlegadaConfirmada'];
+  const encabezados = ['Prioridad','Grupo','Partida','Cod. Tela','Desc. Tela','Cod. Color','Desc. Color','Kg','Estilo','Ruta','Fecha Hito','Aprobación','Llegada'];
+  function csvCell(v){
+    v = (v===undefined || v===null) ? '' : String(v);
+    if (/[",\n]/.test(v)) v = '"' + v.replace(/"/g,'""') + '"';
+    return v;
+  }
+  const lineas = [encabezados.map(csvCell).join(',')];
+  ULTIMO_FILTRADO.forEach(r=>{
+    lineas.push(cols.map(c=>csvCell(r[c])).join(','));
+  });
+  const csv = '﻿' + lineas.join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const fecha = new Date().toISOString().slice(0,10);
+  a.download = 'seguimiento_partidas_' + fecha + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 cargarDatos();
 </script>

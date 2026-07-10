@@ -28,7 +28,7 @@
   #configBar{
     background:#fff3cd; color:#7a5b00; padding:8px 24px; font-size:13px; display:none;
   }
-  .wrap{ padding:18px 24px; max-width:1400px; margin:0 auto; }
+  .wrap{ padding:18px 24px; max-width:1500px; margin:0 auto; }
   .kpis{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
   .kpi{
     background:#fff; border:1px solid var(--borde); border-radius:10px;
@@ -50,12 +50,14 @@
     padding:8px 14px; font-size:13px; cursor:pointer; height:34px;
   }
   .filtros button.secundario{ background:#fff; color:var(--header); border:1px solid var(--header); }
+  .filtros label.chk{ display:flex;align-items:center;gap:5px;font-size:12px; height:34px; }
+  .filtros label.chk input{ min-width:auto; }
   table{ width:100%; border-collapse:collapse; background:#fff; border-radius:10px; overflow:hidden; }
   thead th{
     background:var(--header); color:#fff; text-align:left; padding:9px 8px; font-size:12px;
     position:sticky; top:0;
   }
-  tbody td{ padding:8px; font-size:12.5px; border-bottom:1px solid var(--borde); }
+  tbody td{ padding:8px; font-size:12.5px; border-bottom:1px solid var(--borde); vertical-align:top; }
   tbody tr:hover{ background:#f6faf9; }
   .badge{ display:inline-block; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700; color:#fff; }
   .b-urgente{ background:var(--alerta); }
@@ -71,6 +73,36 @@
   .tablewrap{ max-height:65vh; overflow:auto; border:1px solid var(--borde); border-radius:10px; }
   .foot{ font-size:11px; color:#667; margin-top:10px; text-align:right; }
   .estado-msg{ padding:40px; text-align:center; color:#667; }
+  .btn-comentario{
+    border:1px solid var(--borde); background:#fff; border-radius:6px; padding:5px 9px;
+    font-size:13px; cursor:pointer; white-space:nowrap;
+  }
+  .btn-comentario.tiene{ background:#EFFCF6; border-color:var(--accent); color:var(--header); font-weight:700; }
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background:rgba(15,30,28,.45);
+    align-items:center; justify-content:center; z-index:1000;
+  }
+  .modal-overlay.show{ display:flex; }
+  .modal-box{
+    background:#fff; border-radius:12px; padding:20px; width:90%; max-width:420px;
+    box-shadow:0 10px 30px rgba(0,0,0,.2);
+  }
+  .modal-box h3{ margin:0 0 4px; font-size:15px; color:var(--header); }
+  .modal-box .sub{ font-size:12px; color:#667; margin-bottom:12px; }
+  .modal-box textarea{
+    width:100%; min-height:100px; border:1px solid var(--borde); border-radius:8px;
+    padding:8px; font-family:inherit; font-size:13px; resize:vertical;
+  }
+  .modal-acciones{ display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+  .modal-acciones button{ border-radius:6px; padding:8px 14px; font-size:13px; cursor:pointer; border:1px solid var(--borde); background:#fff; }
+  .modal-acciones button.guardar{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .modal-acciones button:disabled{ opacity:.5; cursor:wait; }
+  .toast{
+    position:fixed; bottom:20px; right:20px; background:var(--header); color:#fff;
+    padding:10px 16px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .3s; pointer-events:none; z-index:1100;
+  }
+  .toast.show{ opacity:1; }
+  .toast.error{ background:var(--alerta); }
   @media print{
     .filtros, header .sub{ display:none; }
     body{ background:#fff; }
@@ -89,7 +121,7 @@
 </header>
 
 <div id="configBar">
-  ⚠️ Falta configurar <code>APPS_SCRIPT_URL</code> en este archivo HTML (ver LEEME_Seguimiento_Partidas.md).
+  ⚠️ Falta configurar <code>APPS_SCRIPT_URL</code> en este archivo HTML.
 </div>
 
 <div class="wrap">
@@ -115,23 +147,15 @@
       </select>
     </div>
     <div class="campo">
-      <label>Llegada</label>
-      <select id="fLlegada">
-        <option value="">Todos</option>
-        <option value="Sí">Confirmada</option>
-        <option value="Pendiente">Pendiente</option>
-      </select>
-    </div>
-    <div class="campo">
       <label>Buscar (partida / tela / color)</label>
       <input type="text" id="fBuscar" placeholder="Ej: 767435, JE002052...">
     </div>
-    <div class="campo">
-      <label style="visibility:hidden">.</label>
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;">
-        <input type="checkbox" id="fSoloActivas" checked style="min-width:auto;"> Solo activas
-      </label>
-    </div>
+    <label class="chk">
+      <input type="checkbox" id="fSoloActivas" checked> Solo activas
+    </label>
+    <label class="chk">
+      <input type="checkbox" id="fSoloConfirmadas"> Solo confirmadas
+    </label>
     <button class="secundario" onclick="cargarDatos()">↻ Recargar</button>
     <button onclick="exportarCSV()">⬇ Exportar</button>
   </div>
@@ -153,43 +177,62 @@
           <th>Fecha Hito</th>
           <th>Aprobación</th>
           <th>Llegada</th>
+          <th>Comentario</th>
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="13" class="estado-msg">Cargando datos...</td></tr>
+        <tr><td colspan="14" class="estado-msg">Cargando datos...</td></tr>
       </tbody>
     </table>
   </div>
   <div class="foot">Cod./Desc. Combo no incluidos: el reporte fuente actual no trae esa información. Avisar si se debe agregar.</div>
 </div>
 
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <h3>Comentario</h3>
+    <div class="sub" id="modalSub"></div>
+    <textarea id="modalTextarea" placeholder="Escribe aquí tu comentario..."></textarea>
+    <div class="modal-acciones">
+      <button onclick="cerrarModal()">Cancelar</button>
+      <button class="guardar" id="modalGuardarBtn" onclick="guardarComentarioModal()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
 <script>
-// ======================================================================
-// CONFIGURACIÓN: pega aquí la URL de tu Apps Script Web App (doGet/doPost)
-// Extensiones > Apps Script > Implementar > Nueva implementación > Aplicación web
-// ======================================================================
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkkOKzEAW9AJVIim0QOzSzB6Ec4hfRU7ZKb64-UF0pPZjRACjcPRD7tYwn6mfJa6Da9g/exec";
 
 let DATA = [];
+let ULTIMO_FILTRADO = [];
+let modalId = null;
+
+function showToast(msg, isError){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(()=> t.classList.remove('show'), 2500);
+}
 
 async function cargarDatos(){
-  document.getElementById('tbody').innerHTML = '<tr><td colspan="13" class="estado-msg">Cargando datos...</td></tr>';
+  document.getElementById('tbody').innerHTML = '<tr><td colspan="14" class="estado-msg">Cargando datos...</td></tr>';
   if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf('PEGA_AQUI') >= 0){
     document.getElementById('configBar').style.display = 'block';
-    document.getElementById('tbody').innerHTML = '<tr><td colspan="13" class="estado-msg">Configura APPS_SCRIPT_URL para ver datos.</td></tr>';
+    document.getElementById('tbody').innerHTML = '<tr><td colspan="14" class="estado-msg">Configura APPS_SCRIPT_URL para ver datos.</td></tr>';
     return;
   }
   try{
     const res = await fetch(APPS_SCRIPT_URL + '?_=' + Date.now());
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || 'Error desconocido');
-    // Los observadores solo ven las partidas que Alice publicó explícitamente
-    DATA = (json.rows || []).filter(r => r.VisibleObservadores === 'Sí');
+    DATA = json.rows || [];
     poblarFiltros();
     render();
     document.getElementById('lastUpdate').textContent = 'Actualizado: ' + new Date().toLocaleString('es-PE');
   }catch(err){
-    document.getElementById('tbody').innerHTML = '<tr><td colspan="13" class="estado-msg">Error cargando datos: '+err.message+'</td></tr>';
+    document.getElementById('tbody').innerHTML = '<tr><td colspan="14" class="estado-msg">Error cargando datos: '+err.message+'</td></tr>';
   }
 }
 
@@ -223,22 +266,20 @@ function badgeLlegada(l){
   return '<span class="badge b-no">PENDIENTE</span>';
 }
 
-let ULTIMO_FILTRADO = [];
-
 function render(){
   const vGrupo = document.getElementById('fGrupo').value;
   const vRuta = document.getElementById('fRuta').value;
   const vAprob = document.getElementById('fAprobacion').value;
-  const vLleg = document.getElementById('fLlegada').value;
   const vBuscar = document.getElementById('fBuscar').value.trim().toLowerCase();
   const soloActivas = document.getElementById('fSoloActivas').checked;
+  const soloConfirmadas = document.getElementById('fSoloConfirmadas').checked;
 
   let filtradas = DATA.filter(r=>{
     if (soloActivas && r.Estado !== 'Activo') return false;
+    if (soloConfirmadas && r.LlegadaConfirmada !== 'Sí') return false;
     if (vGrupo && r.Grupo !== vGrupo) return false;
     if (vRuta && r.Ruta !== vRuta) return false;
     if (vAprob && (r.EstadoAprobacion || 'Pendiente') !== vAprob) return false;
-    if (vLleg && (r.LlegadaConfirmada || 'Pendiente') !== vLleg) return false;
     if (vBuscar){
       const hay = [r.Partida, r.CodTela, r.DescTela, r.CodColor, r.DescColor, r.Estilo]
         .some(v => String(v||'').toLowerCase().includes(vBuscar));
@@ -247,7 +288,6 @@ function render(){
     return true;
   });
 
-  // orden: URGENTE primero, luego 1,2,3
   const orden = {'URGENTE':0, '1':1, '2':2, '3':3, '':4};
   filtradas.sort((a,b)=> (orden[a.Prioridad] ?? 4) - (orden[b.Prioridad] ?? 4));
 
@@ -255,9 +295,11 @@ function render(){
 
   const tbody = document.getElementById('tbody');
   if (filtradas.length === 0){
-    tbody.innerHTML = '<tr><td colspan="13" class="estado-msg">No hay partidas con esos filtros.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="14" class="estado-msg">No hay partidas con esos filtros.</td></tr>';
   } else {
-    tbody.innerHTML = filtradas.map(r => `
+    tbody.innerHTML = filtradas.map(r => {
+      const tieneComentario = !!(r.Comentario && String(r.Comentario).trim());
+      return `
       <tr>
         <td>${badgePrioridad(r.Prioridad)}</td>
         <td>${r.Grupo||''}</td>
@@ -272,11 +314,11 @@ function render(){
         <td>${r.FecHito||''}</td>
         <td>${badgeAprob(r.EstadoAprobacion)}</td>
         <td>${badgeLlegada(r.LlegadaConfirmada)}</td>
+        <td><button class="btn-comentario ${tieneComentario?'tiene':''}" onclick="abrirModal('${encodeURIComponent(r.ID)}')">${tieneComentario ? '💬 Ver/editar' : '💬 Agregar'}</button></td>
       </tr>
-    `).join('');
+    `;}).join('');
   }
 
-  // KPIs
   const activas = DATA.filter(r=>r.Estado==='Activo');
   const urgentes = activas.filter(r=>r.Prioridad==='URGENTE').length;
   const kgTotal = activas.reduce((s,r)=> s + (parseFloat(r.Kg)||0), 0);
@@ -291,14 +333,59 @@ function render(){
   `;
 }
 
-['fGrupo','fRuta','fAprobacion','fLlegada','fSoloActivas'].forEach(id=>{
+['fGrupo','fRuta','fAprobacion','fSoloActivas','fSoloConfirmadas'].forEach(id=>{
   document.getElementById(id).addEventListener('change', render);
 });
 document.getElementById('fBuscar').addEventListener('input', render);
 
+// ---------- Modal de comentario ----------
+function abrirModal(idEncoded){
+  const id = decodeURIComponent(idEncoded);
+  const row = DATA.find(r => r.ID === id);
+  if (!row) return;
+  modalId = id;
+  document.getElementById('modalSub').textContent = (row.Partida||'') + ' — ' + (row.Grupo||'');
+  document.getElementById('modalTextarea').value = row.Comentario || '';
+  document.getElementById('modalOverlay').classList.add('show');
+  document.getElementById('modalTextarea').focus();
+}
+
+function cerrarModal(){
+  document.getElementById('modalOverlay').classList.remove('show');
+  modalId = null;
+}
+
+async function guardarComentarioModal(){
+  if (!modalId) return;
+  const texto = document.getElementById('modalTextarea').value;
+  const btn = document.getElementById('modalGuardarBtn');
+  btn.disabled = true;
+  try{
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method:'POST',
+      body: JSON.stringify({ action:'updateComentario', id: modalId, comentario: texto })
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || 'Error desconocido');
+    const row = DATA.find(r => r.ID === modalId);
+    if (row) row.Comentario = texto;
+    showToast('Comentario guardado');
+    cerrarModal();
+    render();
+  }catch(err){
+    showToast('Error: ' + err.message, true);
+  }
+  btn.disabled = false;
+}
+
+document.getElementById('modalOverlay').addEventListener('click', function(e){
+  if (e.target === this) cerrarModal();
+});
+
+// ---------- Exportar CSV (incluye comentario, para compartir con el resto) ----------
 function exportarCSV(){
-  const cols = ['Prioridad','Grupo','Partida','CodTela','DescTela','CodColor','DescColor','Kg','Estilo','Ruta','FecHito','EstadoAprobacion','LlegadaConfirmada'];
-  const encabezados = ['Prioridad','Grupo','Partida','Cod. Tela','Desc. Tela','Cod. Color','Desc. Color','Kg','Estilo','Ruta','Fecha Hito','Aprobación','Llegada'];
+  const cols = ['Prioridad','Grupo','Partida','CodTela','DescTela','CodColor','DescColor','Kg','Estilo','Ruta','FecHito','EstadoAprobacion','LlegadaConfirmada','Comentario'];
+  const encabezados = ['Prioridad','Grupo','Partida','Cod. Tela','Desc. Tela','Cod. Color','Desc. Color','Kg','Estilo','Ruta','Fecha Hito','Aprobación','Llegada','Comentario'];
   function csvCell(v){
     v = (v===undefined || v===null) ? '' : String(v);
     if (/[",\n]/.test(v)) v = '"' + v.replace(/"/g,'""') + '"';
@@ -308,7 +395,7 @@ function exportarCSV(){
   ULTIMO_FILTRADO.forEach(r=>{
     lineas.push(cols.map(c=>csvCell(r[c])).join(','));
   });
-  const csv = '﻿' + lineas.join('\r\n');
+  const csv = '\uFEFF' + lineas.join('\r\n');
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

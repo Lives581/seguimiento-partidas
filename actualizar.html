@@ -56,8 +56,17 @@
   .btn-op.activo-interna{ background:var(--accent); color:#fff; border-color:var(--accent); }
   .btn-op.activo-cliente{ background:#0EA5E9; color:#fff; border-color:#0EA5E9; }
   .btn-op.activo-si{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .btn-op.activo-publicado{ background:#7C3AED; color:#fff; border-color:#7C3AED; }
   .btn-op:disabled{ opacity:.5; cursor:wait; }
   .estado-msg{ padding:40px; text-align:center; color:#667; }
+  .comentario-box{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .comentario-box input[type=text]{
+    padding:6px 8px; border:1px solid var(--borde); border-radius:6px; font-size:12px; min-width:220px;
+  }
+  .comentario-box button{
+    background:#fff; border:1px solid var(--header); color:var(--header); border-radius:6px;
+    padding:6px 10px; font-size:12px; cursor:pointer;
+  }
   .toast{
     position:fixed; bottom:20px; right:20px; background:var(--header); color:#fff;
     padding:10px 16px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .3s; pointer-events:none;
@@ -70,7 +79,7 @@
 
 <header>
   <h1>✅ Actualizar Partidas</h1>
-  <div class="sub">Calidad marca Estado de Aprobación · Producción Textil marca Llegada Confirmada</div>
+  <div class="sub">Calidad marca Aprobación · Producción Textil marca Llegada · Alice comenta y publica a Observadores</div>
 </header>
 
 <div id="configBar">
@@ -97,6 +106,20 @@
       <label>Buscar</label>
       <input type="text" id="fBuscar" placeholder="Partida / tela / color">
     </div>
+    <div class="campo">
+      <label>Confirmado desde (Alice)</label>
+      <input type="date" id="fConfDesde">
+    </div>
+    <div class="campo">
+      <label>Confirmado hasta (Alice)</label>
+      <input type="date" id="fConfHasta">
+    </div>
+    <div class="campo">
+      <label style="visibility:hidden">.</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;">
+        <input type="checkbox" id="fSoloConfirmadas" style="min-width:auto;"> Solo confirmadas
+      </label>
+    </div>
     <button onclick="cargarDatos()">↻ Recargar</button>
   </div>
 
@@ -108,11 +131,6 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ======================================================================
-// CONFIGURACIÓN: pega aquí la URL de tu Apps Script Web App (doGet/doPost)
-// Extensiones > Apps Script > Implementar > Nueva implementación > Aplicación web
-// Debe ser LA MISMA URL que en seguimiento.html
-// ======================================================================
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkkOKzEAW9AJVIim0QOzSzB6Ec4hfRU7ZKb64-UF0pPZjRACjcPRD7tYwn6mfJa6Da9g/exec";
 
 let DATA = [];
@@ -174,6 +192,9 @@ function render(){
   const vGrupo = document.getElementById('fGrupo').value;
   const vRuta = document.getElementById('fRuta').value;
   const vBuscar = document.getElementById('fBuscar').value.trim().toLowerCase();
+  const vConfDesde = document.getElementById('fConfDesde').value;
+  const vConfHasta = document.getElementById('fConfHasta').value;
+  const vSoloConfirmadas = document.getElementById('fSoloConfirmadas').checked;
 
   let filtradas = DATA.filter(r=>{
     if (vGrupo && r.Grupo !== vGrupo) return false;
@@ -181,6 +202,13 @@ function render(){
     if (vBuscar){
       const hay = [r.Partida, r.CodTela, r.DescTela, r.CodColor, r.DescColor].some(v => String(v||'').toLowerCase().includes(vBuscar));
       if (!hay) return false;
+    }
+    if (vSoloConfirmadas && r.LlegadaConfirmada !== 'Sí') return false;
+    if (vConfDesde || vConfHasta){
+      if (!r.FechaLlegadaConfirmada) return false;
+      const fc = r.FechaLlegadaConfirmada;
+      if (vConfDesde && fc < vConfDesde) return false;
+      if (vConfHasta && fc > vConfHasta) return false;
     }
     return true;
   });
@@ -197,11 +225,13 @@ function render(){
   lista.innerHTML = filtradas.map(r => {
     const est = r.EstadoAprobacion || 'Pendiente';
     const lleg = r.LlegadaConfirmada || 'Pendiente';
+    const publicado = r.VisibleObservadores === 'Sí';
+    const comentario = r.Comentario || '';
     return `
     <div class="tarjeta" data-id="${encodeURIComponent(r.ID)}">
       <div class="top">
         <div>${badgePrioridad(r.Prioridad)} <b>${r.Partida||''}</b> — ${r.Grupo||''}</div>
-        <div style="font-size:12px;color:#667;">Fecha Hito: ${r.FecHito||'-'}</div>
+        <div style="font-size:12px;color:#667;">Fecha Hito: ${r.FecHito||'-'} ${r.FechaLlegadaConfirmada ? '· Confirmado: '+r.FechaLlegadaConfirmada : ''}</div>
       </div>
       <div class="info">
         <b>${r.CodTela||''}</b> ${r.DescTela||''}<br>
@@ -221,6 +251,20 @@ function render(){
           <div class="btn-set">
             <button class="btn-op ${lleg!=='Sí'?'activo-pendiente':''}" onclick="setLlegada(this,false)">Pendiente</button>
             <button class="btn-op ${lleg==='Sí'?'activo-si':''}" onclick="setLlegada(this,true)">Confirmada ✓</button>
+          </div>
+        </div>
+        <div class="accion-grupo">
+          <div class="titulo">Alice · Comentario</div>
+          <div class="comentario-box">
+            <input type="text" class="comentarioInput" value="${comentario.replace(/"/g,'&quot;')}" placeholder="Agregar comentario...">
+            <button onclick="guardarComentario(this)">💾 Guardar</button>
+          </div>
+        </div>
+        <div class="accion-grupo">
+          <div class="titulo">Alice · Publicar a Observadores</div>
+          <div class="btn-set">
+            <button class="btn-op ${!publicado?'activo-pendiente':''}" onclick="setPublicar(this,false)">No publicado</button>
+            <button class="btn-op ${publicado?'activo-publicado':''}" onclick="setPublicar(this,true)">Publicado ✓</button>
           </div>
         </div>
       </div>
@@ -276,8 +320,33 @@ async function setLlegada(btn, confirmado){
   }
 }
 
-['fGrupo','fRuta'].forEach(id=> document.getElementById(id).addEventListener('change', render));
-document.getElementById('fBuscar').addEventListener('input', render);
+async function guardarComentario(btn){
+  const tarjeta = btn.closest('.tarjeta');
+  const id = decodeURIComponent(tarjeta.dataset.id);
+  const input = tarjeta.querySelector('.comentarioInput');
+  btn.disabled = true;
+  const r = await postUpdate({ action:'updateComentario', id, comentario: input.value });
+  btn.disabled = false;
+  if (r.ok) showToast('Comentario guardado');
+}
+
+async function setPublicar(btn, visible){
+  const tarjeta = btn.closest('.tarjeta');
+  const id = decodeURIComponent(tarjeta.dataset.id);
+  const grupo = tarjeta.querySelectorAll('.btn-set')[2].querySelectorAll('button');
+  grupo.forEach(b=>b.disabled=true);
+  const r = await postUpdate({ action:'updatePublicar', id, visible });
+  grupo.forEach(b=>b.disabled=false);
+  if (r.ok){
+    grupo.forEach(b=>{ b.classList.remove('activo-pendiente','activo-publicado'); });
+    btn.classList.add(visible ? 'activo-publicado' : 'activo-pendiente');
+    showToast(visible ? 'Publicado a Observadores' : 'Ya no se muestra a Observadores');
+  }
+}
+
+['fGrupo','fRuta','fSoloConfirmadas'].forEach(id=> document.getElementById(id).addEventListener('change', render));
+['fBuscar'].forEach(id=> document.getElementById(id).addEventListener('input', render));
+['fConfDesde','fConfHasta'].forEach(id=> document.getElementById(id).addEventListener('change', render));
 
 cargarDatos();
 </script>

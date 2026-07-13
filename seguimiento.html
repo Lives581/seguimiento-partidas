@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Seguimiento de Partidas — LIVES</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style/dist/xlsx.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root{
     --header:#0E3B36;
@@ -104,6 +105,53 @@
   }
   .toast.show{ opacity:1; }
   .toast.error{ background:var(--alerta); }
+
+  /* Modal tarjeta cliente */
+  .modal-overlay-lg{
+    display:none; position:fixed; inset:0; background:rgba(15,30,28,.55);
+    align-items:flex-start; justify-content:center; z-index:1000; overflow:auto; padding:30px 16px;
+  }
+  .modal-overlay-lg.show{ display:flex; }
+  .modal-lg-wrap{ max-width:660px; width:100%; }
+  .modal-lg-acciones{
+    display:flex; justify-content:center; gap:10px; margin-top:16px; margin-bottom:30px;
+  }
+  .modal-lg-acciones button{
+    border-radius:8px; padding:10px 18px; font-size:13px; cursor:pointer; border:1px solid var(--borde); background:#fff;
+  }
+  .modal-lg-acciones button.descargar{ background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700; }
+  .modal-lg-acciones button:disabled{ opacity:.5; cursor:wait; }
+
+  .tarjeta-cliente{
+    background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 10px 30px rgba(14,59,54,.15);
+  }
+  .tc-header{ background:linear-gradient(135deg, var(--header), #14524A); color:#fff; padding:26px 28px; }
+  .tc-header .marca{ display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .tc-header .marca .logo{
+    width:34px; height:34px; border-radius:8px; background:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px;
+  }
+  .tc-header .marca .nombre{ font-size:14px; font-weight:700; letter-spacing:.04em; opacity:.9; }
+  .tc-header h1{ margin:0 0 4px; font-size:22px; }
+  .tc-header .sub{ font-size:13px; opacity:.85; }
+  .tc-body{ padding:24px 28px; }
+  .tc-kpis{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:22px; }
+  .tc-kpi{ background:var(--fondo); border-radius:12px; padding:14px 10px; text-align:center; }
+  .tc-kpi .num{ font-size:24px; font-weight:700; color:var(--header); }
+  .tc-kpi .lbl{ font-size:11px; color:#556; text-transform:uppercase; letter-spacing:.03em; margin-top:2px; }
+  .tc-seccion-titulo{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#556; margin:0 0 10px; }
+  .tc-partida{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid var(--borde); }
+  .tc-partida:last-child{ border-bottom:none; }
+  .tc-partida .izq b{ display:block; font-size:14px; color:var(--header); }
+  .tc-partida .izq span{ font-size:12px; color:#667; }
+  .tc-estado{
+    display:inline-flex; align-items:center; gap:5px; padding:5px 12px; border-radius:20px;
+    font-size:11px; font-weight:700; color:#fff; background:var(--accent); white-space:nowrap;
+  }
+  .tc-estado.pend{ background:#9CA3AF; }
+  .tc-footer{ background:var(--fondo); padding:16px 28px; display:flex; justify-content:space-between; align-items:center; font-size:11px; color:#667; }
+  .tc-footer .fecha{ font-weight:700; color:var(--header); }
+  .tc-vacio{ padding:24px 28px; text-align:center; color:#667; font-size:13px; }
   @media print{
     .filtros, header .sub{ display:none; }
     body{ background:#fff; }
@@ -166,6 +214,8 @@
       <input type="checkbox" id="fSoloConfirmadas"> Solo confirmadas
     </label>
     <button class="secundario" onclick="cargarDatos()">↻ Recargar</button>
+    <button class="secundario" onclick="limpiarFiltros()">✕ Limpiar filtros</button>
+    <button class="secundario" onclick="abrirTarjetaCliente()">🖼️ Tarjeta cliente</button>
     <button onclick="exportarXLSX()">⬇ Exportar</button>
   </div>
 
@@ -210,6 +260,16 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="modal-overlay-lg" id="modalTarjetaOverlay">
+  <div class="modal-lg-wrap">
+    <div id="tarjetaClienteContent"></div>
+    <div class="modal-lg-acciones">
+      <button onclick="cerrarTarjetaCliente()">Cerrar</button>
+      <button class="descargar" id="btnDescargarImagen" onclick="descargarTarjetaImagen()">📥 Descargar imagen</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkkOKzEAW9AJVIim0QOzSzB6Ec4hfRU7ZKb64-UF0pPZjRACjcPRD7tYwn6mfJa6Da9g/exec";
@@ -349,6 +409,19 @@ function render(){
   `;
 }
 
+function limpiarFiltros(){
+  document.getElementById('fGrupo').value = '';
+  document.getElementById('fRuta').value = '';
+  document.getElementById('fAprobacion').value = '';
+  document.getElementById('fBuscar').value = '';
+  document.getElementById('fConfDesde').value = '';
+  document.getElementById('fConfHasta').value = '';
+  document.getElementById('fSoloActivas').checked = true;
+  document.getElementById('fSoloConfirmadas').checked = false;
+  render();
+  showToast('Filtros limpiados');
+}
+
 ['fGrupo','fRuta','fAprobacion','fSoloActivas','fSoloConfirmadas','fConfDesde','fConfHasta'].forEach(id=>{
   document.getElementById(id).addEventListener('change', render);
 });
@@ -450,6 +523,93 @@ function exportarXLSX(){
   const fecha = new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb, 'seguimiento_partidas_' + fecha + '.xlsx', { cellStyles:true });
   showToast('Excel exportado (' + ULTIMO_FILTRADO.length + ' partidas)');
+}
+
+// ---------- Tarjeta visual para cliente (imagen) ----------
+function abrirTarjetaCliente(){
+  if (ULTIMO_FILTRADO.length === 0){
+    showToast('No hay partidas con esos filtros para armar la tarjeta', true);
+    return;
+  }
+
+  const vGrupo = document.getElementById('fGrupo').value;
+  const titulo = vGrupo ? ('Resumen de Partidas — ' + vGrupo) : 'Resumen de Partidas';
+
+  const total = ULTIMO_FILTRADO.length;
+  const confirmadas = ULTIMO_FILTRADO.filter(r => r.LlegadaConfirmada === 'Sí').length;
+  const kgTotal = ULTIMO_FILTRADO.reduce((s,r)=> s + (parseFloat(r.Kg)||0), 0);
+
+  const filasHtml = ULTIMO_FILTRADO.map(r => {
+    const confirmada = r.LlegadaConfirmada === 'Sí';
+    return `
+      <div class="tc-partida">
+        <div class="izq">
+          <b>${r.Partida||''}</b>
+          <span>${r.CodTela||''}${r.DescTela ? ' — ' + r.DescTela : ''} · Ruta ${r.Ruta||'-'}</span>
+        </div>
+        <div class="tc-estado ${confirmada?'':'pend'}">${confirmada ? 'Confirmada' : 'Pendiente'}</div>
+      </div>`;
+  }).join('');
+
+  const fechaHoy = new Date().toLocaleDateString('es-PE');
+
+  document.getElementById('tarjetaClienteContent').innerHTML = `
+    <div class="tarjeta-cliente" id="tarjetaClienteImg">
+      <div class="tc-header">
+        <div class="marca">
+          <div class="logo">L</div>
+          <div class="nombre">LIVES</div>
+        </div>
+        <h1>${titulo}</h1>
+        <div class="sub">Reporte al ${fechaHoy}</div>
+      </div>
+      <div class="tc-body">
+        <div class="tc-kpis">
+          <div class="tc-kpi"><div class="num">${total}</div><div class="lbl">Partidas</div></div>
+          <div class="tc-kpi"><div class="num">${confirmadas}</div><div class="lbl">Confirmadas</div></div>
+          <div class="tc-kpi"><div class="num">${kgTotal.toLocaleString('es-PE',{maximumFractionDigits:0})}</div><div class="lbl">Kg totales</div></div>
+        </div>
+        <div class="tc-seccion-titulo">Detalle de partidas</div>
+        ${filasHtml}
+      </div>
+      <div class="tc-footer">
+        <span>Seguimiento de Partidas · LIVES</span>
+        <span class="fecha">Actualizado ${fechaHoy}</span>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('modalTarjetaOverlay').classList.add('show');
+}
+
+function cerrarTarjetaCliente(){
+  document.getElementById('modalTarjetaOverlay').classList.remove('show');
+}
+
+document.getElementById('modalTarjetaOverlay').addEventListener('click', function(e){
+  if (e.target === this) cerrarTarjetaCliente();
+});
+
+async function descargarTarjetaImagen(){
+  const el = document.getElementById('tarjetaClienteImg');
+  if (!el) return;
+  const btn = document.getElementById('btnDescargarImagen');
+  btn.disabled = true;
+  try{
+    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const dataUrl = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    const fecha = new Date().toISOString().slice(0,10);
+    a.download = 'tarjeta_partidas_' + fecha + '.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast('Imagen descargada');
+  }catch(err){
+    showToast('Error generando imagen: ' + err.message, true);
+  }
+  btn.disabled = false;
 }
 
 cargarDatos();

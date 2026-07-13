@@ -94,9 +94,37 @@
       <select id="fRuta"><option value="">Todas</option></select>
     </div>
     <div class="campo">
+      <label>Prioridad</label>
+      <select id="fPrioridad">
+        <option value="">Todas</option>
+        <option value="URGENTE">Urgente</option>
+        <option value="1">1 (este mes)</option>
+        <option value="2">2 (próximo mes)</option>
+        <option value="3">3 (después)</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label>Estado Aprobación</label>
+      <select id="fAprobacion">
+        <option value="">Todos</option>
+        <option value="Pendiente">Pendiente</option>
+        <option value="Aprobación Interna">Aprobación Interna</option>
+        <option value="Aprobación Cliente">Aprobación Cliente</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label>Llegada</label>
+      <select id="fLlegada">
+        <option value="">Todas</option>
+        <option value="Sí">Confirmada</option>
+        <option value="Pendiente">Pendiente</option>
+      </select>
+    </div>
+    <div class="campo">
       <label>Buscar</label>
       <input type="text" id="fBuscar" placeholder="Partida / tela / color">
     </div>
+    <button class="secundario" onclick="limpiarFiltrosActualizar()">✕ Limpiar filtros</button>
     <button onclick="cargarDatos()">↻ Recargar</button>
   </div>
 
@@ -168,13 +196,19 @@ function badgePrioridad(p){
 function render(){
   const vGrupo = document.getElementById('fGrupo').value;
   const vRuta = document.getElementById('fRuta').value;
+  const vPrioridad = document.getElementById('fPrioridad').value;
+  const vAprob = document.getElementById('fAprobacion').value;
+  const vLleg = document.getElementById('fLlegada').value;
   const vBuscar = document.getElementById('fBuscar').value.trim().toLowerCase();
 
   let filtradas = DATA.filter(r=>{
     if (vGrupo && r.Grupo !== vGrupo) return false;
     if (vRuta && r.Ruta !== vRuta) return false;
+    if (vPrioridad && r.Prioridad !== vPrioridad) return false;
+    if (vAprob && (r.EstadoAprobacion || 'Pendiente') !== vAprob) return false;
+    if (vLleg && (r.LlegadaConfirmada || 'Pendiente') !== vLleg) return false;
     if (vBuscar){
-      const hay = [r.Partida, r.CodTela, r.DescTela, r.CodColor, r.DescColor].some(v => String(v||'').toLowerCase().includes(vBuscar));
+      const hay = [r.Partida, r.CodTela, r.DescTela, r.CodColor, r.DescColor, r.Estilo].some(v => String(v||'').toLowerCase().includes(vBuscar));
       if (!hay) return false;
     }
     return true;
@@ -271,7 +305,18 @@ async function setLlegada(btn, confirmado){
   }
 }
 
-['fGrupo','fRuta'].forEach(id=> document.getElementById(id).addEventListener('change', render));
+function limpiarFiltrosActualizar(){
+  document.getElementById('fGrupo').value = '';
+  document.getElementById('fRuta').value = '';
+  document.getElementById('fPrioridad').value = '';
+  document.getElementById('fAprobacion').value = '';
+  document.getElementById('fLlegada').value = '';
+  document.getElementById('fBuscar').value = '';
+  render();
+  showToast('Filtros limpiados');
+}
+
+['fGrupo','fRuta','fPrioridad','fAprobacion','fLlegada'].forEach(id=> document.getElementById(id).addEventListener('change', render));
 document.getElementById('fBuscar').addEventListener('input', render);
 
 cargarDatos();

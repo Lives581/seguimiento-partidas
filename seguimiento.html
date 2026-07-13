@@ -151,6 +151,14 @@
       <label>Buscar (partida / tela / color)</label>
       <input type="text" id="fBuscar" placeholder="Ej: 767435, JE002052...">
     </div>
+    <div class="campo">
+      <label>Confirmado desde</label>
+      <input type="date" id="fConfDesde">
+    </div>
+    <div class="campo">
+      <label>Confirmado hasta</label>
+      <input type="date" id="fConfHasta">
+    </div>
     <label class="chk">
       <input type="checkbox" id="fSoloActivas" checked> Solo activas
     </label>
@@ -274,6 +282,8 @@ function render(){
   const vBuscar = document.getElementById('fBuscar').value.trim().toLowerCase();
   const soloActivas = document.getElementById('fSoloActivas').checked;
   const soloConfirmadas = document.getElementById('fSoloConfirmadas').checked;
+  const vConfDesde = document.getElementById('fConfDesde').value;
+  const vConfHasta = document.getElementById('fConfHasta').value;
 
   let filtradas = DATA.filter(r=>{
     if (soloActivas && r.Estado !== 'Activo') return false;
@@ -281,6 +291,12 @@ function render(){
     if (vGrupo && r.Grupo !== vGrupo) return false;
     if (vRuta && r.Ruta !== vRuta) return false;
     if (vAprob && (r.EstadoAprobacion || 'Pendiente') !== vAprob) return false;
+    if (vConfDesde || vConfHasta){
+      const fc = r.FechaLlegadaConfirmada;
+      if (!fc) return false;
+      if (vConfDesde && fc < vConfDesde) return false;
+      if (vConfHasta && fc > vConfHasta) return false;
+    }
     if (vBuscar){
       const hay = [r.Partida, r.CodTela, r.DescTela, r.CodColor, r.DescColor, r.Estilo]
         .some(v => String(v||'').toLowerCase().includes(vBuscar));
@@ -320,13 +336,12 @@ function render(){
     `;}).join('');
   }
 
-  const activas = DATA.filter(r=>r.Estado==='Activo');
-  const urgentes = activas.filter(r=>r.Prioridad==='URGENTE').length;
-  const kgTotal = activas.reduce((s,r)=> s + (parseFloat(r.Kg)||0), 0);
-  const pendAprob = activas.filter(r=>(r.EstadoAprobacion||'Pendiente')==='Pendiente').length;
-  const pendLlegada = activas.filter(r=>(r.LlegadaConfirmada||'Pendiente')!=='Sí').length;
+  const urgentes = filtradas.filter(r=>r.Prioridad==='URGENTE').length;
+  const kgTotal = filtradas.reduce((s,r)=> s + (parseFloat(r.Kg)||0), 0);
+  const pendAprob = filtradas.filter(r=>(r.EstadoAprobacion||'Pendiente')==='Pendiente').length;
+  const pendLlegada = filtradas.filter(r=>(r.LlegadaConfirmada||'Pendiente')!=='Sí').length;
   document.getElementById('kpis').innerHTML = `
-    <div class="kpi"><div class="num">${activas.length}</div><div class="lbl">Partidas activas</div></div>
+    <div class="kpi"><div class="num">${filtradas.length}</div><div class="lbl">Partidas (filtro actual)</div></div>
     <div class="kpi urgente"><div class="num">${urgentes}</div><div class="lbl">Urgentes</div></div>
     <div class="kpi"><div class="num">${kgTotal.toLocaleString('es-PE',{maximumFractionDigits:0})}</div><div class="lbl">Kg totales</div></div>
     <div class="kpi"><div class="num">${pendAprob}</div><div class="lbl">Pend. aprobación</div></div>
@@ -334,7 +349,7 @@ function render(){
   `;
 }
 
-['fGrupo','fRuta','fAprobacion','fSoloActivas','fSoloConfirmadas'].forEach(id=>{
+['fGrupo','fRuta','fAprobacion','fSoloActivas','fSoloConfirmadas','fConfDesde','fConfHasta'].forEach(id=>{
   document.getElementById(id).addEventListener('change', render);
 });
 document.getElementById('fBuscar').addEventListener('input', render);

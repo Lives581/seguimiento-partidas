@@ -186,6 +186,7 @@ function poblarFiltros(){
 }
 
 function badgePrioridad(p){
+  p = String(p == null ? '' : p).trim();
   if (p === 'URGENTE') return '<span class="badge b-urgente">URGENTE</span>';
   if (p === '1') return '<span class="badge b-p1">1</span>';
   if (p === '2') return '<span class="badge b-p2">2</span>';
@@ -204,7 +205,7 @@ function render(){
   let filtradas = DATA.filter(r=>{
     if (vGrupo && r.Grupo !== vGrupo) return false;
     if (vRuta && r.Ruta !== vRuta) return false;
-    if (vPrioridad && r.Prioridad !== vPrioridad) return false;
+    if (vPrioridad && String(r.Prioridad) !== vPrioridad) return false;
     if (vAprob && (r.EstadoAprobacion || 'Pendiente') !== vAprob) return false;
     if (vLleg && (r.LlegadaConfirmada || 'Pendiente') !== vLleg) return false;
     if (vBuscar){

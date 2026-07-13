@@ -319,6 +319,7 @@ function poblarFiltros(){
 }
 
 function badgePrioridad(p){
+  p = String(p == null ? '' : p).trim();
   if (p === 'URGENTE') return '<span class="badge b-urgente">URGENTE</span>';
   if (p === '1') return '<span class="badge b-p1">1</span>';
   if (p === '2') return '<span class="badge b-p2">2</span>';

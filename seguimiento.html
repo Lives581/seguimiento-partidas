@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Seguimiento de Partidas — LIVES</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style/dist/xlsx.bundle.js"></script>
 <style>
   :root{
     --header:#0E3B36;
@@ -408,15 +408,26 @@ function exportarXLSX(){
   ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s:{r:0,c:0}, e:{r:aoa.length-1, c:encabezados.length-1} }) };
   ws['!freeze'] = { xSplit: 0, ySplit: 1 };
 
-  const headerRange = XLSX.utils.decode_range(ws['!ref']);
-  for (let c = headerRange.s.c; c <= headerRange.e.c; c++){
-    const addr = XLSX.utils.encode_cell({ r:0, c });
-    if (!ws[addr]) continue;
-    ws[addr].s = {
-      font: { bold:true, color:{ rgb:'FFFFFF' } },
-      fill: { fgColor:{ rgb:'0E3B36' } },
-      alignment: { vertical:'center' }
-    };
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  const bordeFino = { style:'thin', color:{ rgb:'D9E2E0' } };
+  for (let r = range.s.r; r <= range.e.r; r++){
+    for (let c = range.s.c; c <= range.e.c; c++){
+      const addr = XLSX.utils.encode_cell({ r, c });
+      if (!ws[addr]) continue;
+      if (r === 0){
+        ws[addr].s = {
+          font: { bold:true, color:{ rgb:'FFFFFF' } },
+          fill: { fgColor:{ rgb:'0E3B36' } },
+          alignment: { vertical:'center', horizontal:'left' },
+          border: { top:bordeFino, bottom:bordeFino, left:bordeFino, right:bordeFino }
+        };
+      } else {
+        ws[addr].s = {
+          border: { top:bordeFino, bottom:bordeFino, left:bordeFino, right:bordeFino },
+          alignment: { vertical:'center' }
+        };
+      }
+    }
   }
 
   const wb = XLSX.utils.book_new();

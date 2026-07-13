@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Seguimiento de Partidas — LIVES</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --header:#0E3B36;
@@ -157,7 +158,7 @@
       <input type="checkbox" id="fSoloConfirmadas"> Solo confirmadas
     </label>
     <button class="secundario" onclick="cargarDatos()">↻ Recargar</button>
-    <button onclick="exportarCSV()">⬇ Exportar</button>
+    <button onclick="exportarXLSX()">⬇ Exportar</button>
   </div>
 
   <div class="tablewrap">
@@ -382,30 +383,47 @@ document.getElementById('modalOverlay').addEventListener('click', function(e){
   if (e.target === this) cerrarModal();
 });
 
-// ---------- Exportar CSV (incluye comentario, para compartir con el resto) ----------
-function exportarCSV(){
+// ---------- Exportar Excel real (incluye comentario, para compartir con el resto) ----------
+function exportarXLSX(){
+  if (ULTIMO_FILTRADO.length === 0){
+    showToast('No hay partidas con esos filtros para exportar', true);
+    return;
+  }
   const cols = ['Prioridad','Grupo','Partida','CodTela','DescTela','CodColor','DescColor','Kg','Estilo','Ruta','FecHito','EstadoAprobacion','LlegadaConfirmada','Comentario'];
   const encabezados = ['Prioridad','Grupo','Partida','Cod. Tela','Desc. Tela','Cod. Color','Desc. Color','Kg','Estilo','Ruta','Fecha Hito','Aprobación','Llegada','Comentario'];
-  function csvCell(v){
-    v = (v===undefined || v===null) ? '' : String(v);
-    if (/[",\n]/.test(v)) v = '"' + v.replace(/"/g,'""') + '"';
-    return v;
+
+  const filas = ULTIMO_FILTRADO.map(r => cols.map(c => {
+    const v = r[c];
+    if (c === 'Kg'){ const n = parseFloat(v); return isNaN(n) ? '' : n; }
+    return (v === undefined || v === null) ? '' : v;
+  }));
+
+  const aoa = [encabezados, ...filas];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  ws['!cols'] = [
+    {wch:10},{wch:14},{wch:12},{wch:12},{wch:26},{wch:12},{wch:20},
+    {wch:9},{wch:14},{wch:16},{wch:12},{wch:18},{wch:12},{wch:36}
+  ];
+  ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s:{r:0,c:0}, e:{r:aoa.length-1, c:encabezados.length-1} }) };
+  ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+  const headerRange = XLSX.utils.decode_range(ws['!ref']);
+  for (let c = headerRange.s.c; c <= headerRange.e.c; c++){
+    const addr = XLSX.utils.encode_cell({ r:0, c });
+    if (!ws[addr]) continue;
+    ws[addr].s = {
+      font: { bold:true, color:{ rgb:'FFFFFF' } },
+      fill: { fgColor:{ rgb:'0E3B36' } },
+      alignment: { vertical:'center' }
+    };
   }
-  const lineas = [encabezados.map(csvCell).join(',')];
-  ULTIMO_FILTRADO.forEach(r=>{
-    lineas.push(cols.map(c=>csvCell(r[c])).join(','));
-  });
-  const csv = '\uFEFF' + lineas.join('\r\n');
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Seguimiento');
   const fecha = new Date().toISOString().slice(0,10);
-  a.download = 'seguimiento_partidas_' + fecha + '.csv';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  XLSX.writeFile(wb, 'seguimiento_partidas_' + fecha + '.xlsx', { cellStyles:true });
+  showToast('Excel exportado (' + ULTIMO_FILTRADO.length + ' partidas)');
 }
 
 cargarDatos();

@@ -370,37 +370,17 @@ function render(){
   });
 
   const orden = {'URGENTE':0, '1':1, '2':2, '3':3, '':4};
-  filtradas.sort((a,b)=> {
-    const po = (orden[a.Prioridad] ?? 4) - (orden[b.Prioridad] ?? 4);
-    if (po !== 0) return po;
-    return String(a.Partida||'').localeCompare(String(b.Partida||''));
-  });
+  filtradas.sort((a,b)=> (orden[a.Prioridad] ?? 4) - (orden[b.Prioridad] ?? 4));
 
   ULTIMO_FILTRADO = filtradas;
-
-  // Kg total y cantidad de filas por Partida, recalculado sobre lo que quede visible según los filtros activos
-  const kgPorPartida = {};
-  const filasPorPartida = {};
-  filtradas.forEach(r => {
-    const kg = parseFloat(r.Kg) || 0;
-    kgPorPartida[r.Partida] = (kgPorPartida[r.Partida] || 0) + kg;
-    filasPorPartida[r.Partida] = (filasPorPartida[r.Partida] || 0) + 1;
-  });
 
   const tbody = document.getElementById('tbody');
   if (filtradas.length === 0){
     tbody.innerHTML = '<tr><td colspan="14" class="estado-msg">No hay partidas con esos filtros.</td></tr>';
   } else {
-    let html = '';
-    let partidaAnterior = null;
-    filtradas.forEach(r => {
+    tbody.innerHTML = filtradas.map(r => {
       const tieneComentario = !!(r.Comentario && String(r.Comentario).trim());
-      const esPrimeraDeSuPartida = r.Partida !== partidaAnterior;
-      partidaAnterior = r.Partida;
-      const celdaKg = esPrimeraDeSuPartida
-        ? `<td style="background:#F6FAF9;font-weight:600;">${(kgPorPartida[r.Partida] || 0).toLocaleString('es-PE',{maximumFractionDigits:2})}</td>`
-        : `<td style="background:#F6FAF9;"></td>`;
-      html += `
+      return `
       <tr>
         <td>${badgePrioridad(r.Prioridad)}</td>
         <td>${r.Grupo||''}</td>
@@ -409,7 +389,7 @@ function render(){
         <td>${r.DescTela||''}</td>
         <td>${r.CodColor||''}</td>
         <td>${r.DescColor||''}</td>
-        ${celdaKg}
+        <td>${r.Kg||''}</td>
         <td>${r.Estilo||''}</td>
         <td>${r.Ruta||''}</td>
         <td>${r.FecHito||''}</td>
@@ -417,9 +397,7 @@ function render(){
         <td>${badgeLlegada(r.LlegadaConfirmada)}</td>
         <td><button class="btn-comentario ${tieneComentario?'tiene':''}" onclick="abrirModal('${encodeURIComponent(r.ID)}')">${tieneComentario ? '💬 Ver/editar' : '💬 Agregar'}</button></td>
       </tr>
-    `;
-    });
-    tbody.innerHTML = html;
+    `;}).join('');
   }
 
   const partidasUnicas = new Set(filtradas.map(r=>r.Partida)).size;
@@ -563,7 +541,17 @@ function abrirTarjetaCliente(){
   const titulo = vGrupo ? ('Resumen de Partidas — ' + vGrupo) : 'Resumen de Partidas';
 
   const total = new Set(ULTIMO_FILTRADO.map(r=>r.Partida)).size;
-  const confirmadas = ULTIMO_FILTRADO.filter(r => r.LlegadaConfirmada === 'Sí').length;
+
+  // Una Partida cuenta como "Confirmada" solo cuando TODAS sus telas/colores
+  // ya tienen Llegada Confirmada = 'Sí' (no basta con que una sola lo esté).
+  const gruposPorPartida = {};
+  ULTIMO_FILTRADO.forEach(r => {
+    if (!gruposPorPartida[r.Partida]) gruposPorPartida[r.Partida] = [];
+    gruposPorPartida[r.Partida].push(r);
+  });
+  const confirmadas = Object.values(gruposPorPartida)
+    .filter(filas => filas.every(f => f.LlegadaConfirmada === 'Sí')).length;
+
   const kgTotal = ULTIMO_FILTRADO.reduce((s,r)=> s + (parseFloat(r.Kg)||0), 0);
 
   const filasHtml = ULTIMO_FILTRADO.map(r => {

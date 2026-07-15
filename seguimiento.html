@@ -398,8 +398,8 @@ function render(){
       const esPrimeraDeSuPartida = r.Partida !== partidaAnterior;
       partidaAnterior = r.Partida;
       const celdaKg = esPrimeraDeSuPartida
-        ? `<td rowspan="${filasPorPartida[r.Partida]}" style="vertical-align:middle;background:#F6FAF9;">${(kgPorPartida[r.Partida] || 0).toLocaleString('es-PE',{maximumFractionDigits:2})}</td>`
-        : '';
+        ? `<td style="background:#F6FAF9;font-weight:600;">${(kgPorPartida[r.Partida] || 0).toLocaleString('es-PE',{maximumFractionDigits:2})}</td>`
+        : `<td style="background:#F6FAF9;"></td>`;
       html += `
       <tr>
         <td>${badgePrioridad(r.Prioridad)}</td>

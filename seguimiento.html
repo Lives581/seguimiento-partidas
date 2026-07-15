@@ -374,6 +374,13 @@ function render(){
 
   ULTIMO_FILTRADO = filtradas;
 
+  // Kg total por Partida, recalculado sobre lo que quede visible según los filtros activos
+  const kgPorPartida = {};
+  filtradas.forEach(r => {
+    const kg = parseFloat(r.Kg) || 0;
+    kgPorPartida[r.Partida] = (kgPorPartida[r.Partida] || 0) + kg;
+  });
+
   const tbody = document.getElementById('tbody');
   if (filtradas.length === 0){
     tbody.innerHTML = '<tr><td colspan="14" class="estado-msg">No hay partidas con esos filtros.</td></tr>';
@@ -389,7 +396,7 @@ function render(){
         <td>${r.DescTela||''}</td>
         <td>${r.CodColor||''}</td>
         <td>${r.DescColor||''}</td>
-        <td>${r.Kg||''}</td>
+        <td>${(kgPorPartida[r.Partida] || 0).toLocaleString('es-PE',{maximumFractionDigits:2})}</td>
         <td>${r.Estilo||''}</td>
         <td>${r.Ruta||''}</td>
         <td>${r.FecHito||''}</td>

@@ -370,24 +370,37 @@ function render(){
   });
 
   const orden = {'URGENTE':0, '1':1, '2':2, '3':3, '':4};
-  filtradas.sort((a,b)=> (orden[a.Prioridad] ?? 4) - (orden[b.Prioridad] ?? 4));
+  filtradas.sort((a,b)=> {
+    const po = (orden[a.Prioridad] ?? 4) - (orden[b.Prioridad] ?? 4);
+    if (po !== 0) return po;
+    return String(a.Partida||'').localeCompare(String(b.Partida||''));
+  });
 
   ULTIMO_FILTRADO = filtradas;
 
-  // Kg total por Partida, recalculado sobre lo que quede visible según los filtros activos
+  // Kg total y cantidad de filas por Partida, recalculado sobre lo que quede visible según los filtros activos
   const kgPorPartida = {};
+  const filasPorPartida = {};
   filtradas.forEach(r => {
     const kg = parseFloat(r.Kg) || 0;
     kgPorPartida[r.Partida] = (kgPorPartida[r.Partida] || 0) + kg;
+    filasPorPartida[r.Partida] = (filasPorPartida[r.Partida] || 0) + 1;
   });
 
   const tbody = document.getElementById('tbody');
   if (filtradas.length === 0){
     tbody.innerHTML = '<tr><td colspan="14" class="estado-msg">No hay partidas con esos filtros.</td></tr>';
   } else {
-    tbody.innerHTML = filtradas.map(r => {
+    let html = '';
+    let partidaAnterior = null;
+    filtradas.forEach(r => {
       const tieneComentario = !!(r.Comentario && String(r.Comentario).trim());
-      return `
+      const esPrimeraDeSuPartida = r.Partida !== partidaAnterior;
+      partidaAnterior = r.Partida;
+      const celdaKg = esPrimeraDeSuPartida
+        ? `<td rowspan="${filasPorPartida[r.Partida]}" style="vertical-align:middle;background:#F6FAF9;">${(kgPorPartida[r.Partida] || 0).toLocaleString('es-PE',{maximumFractionDigits:2})}</td>`
+        : '';
+      html += `
       <tr>
         <td>${badgePrioridad(r.Prioridad)}</td>
         <td>${r.Grupo||''}</td>
@@ -396,7 +409,7 @@ function render(){
         <td>${r.DescTela||''}</td>
         <td>${r.CodColor||''}</td>
         <td>${r.DescColor||''}</td>
-        <td>${(kgPorPartida[r.Partida] || 0).toLocaleString('es-PE',{maximumFractionDigits:2})}</td>
+        ${celdaKg}
         <td>${r.Estilo||''}</td>
         <td>${r.Ruta||''}</td>
         <td>${r.FecHito||''}</td>
@@ -404,7 +417,9 @@ function render(){
         <td>${badgeLlegada(r.LlegadaConfirmada)}</td>
         <td><button class="btn-comentario ${tieneComentario?'tiene':''}" onclick="abrirModal('${encodeURIComponent(r.ID)}')">${tieneComentario ? '💬 Ver/editar' : '💬 Agregar'}</button></td>
       </tr>
-    `;}).join('');
+    `;
+    });
+    tbody.innerHTML = html;
   }
 
   const partidasUnicas = new Set(filtradas.map(r=>r.Partida)).size;

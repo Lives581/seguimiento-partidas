@@ -71,6 +71,7 @@
   .b-pendiente{ background:#9CA3AF; }
   .b-si{ background:var(--accent); }
   .b-no{ background:#9CA3AF; }
+  .b-porconfirmar{ background:var(--monetario); }
   .b-cerrado{ background:#374151; }
   .tablewrap{ max-height:65vh; overflow:auto; border:1px solid var(--borde); border-radius:10px; }
   .foot{ font-size:11px; color:#667; margin-top:10px; text-align:right; }
@@ -334,8 +335,9 @@ function badgeAprob(e){
   if (e === 'Aprobación Cliente') return '<span class="badge b-aprob-cliente">APROB. CLIENTE</span>';
   return '<span class="badge b-pendiente">PENDIENTE</span>';
 }
-function badgeLlegada(l){
+function badgeLlegada(l, aprobacion){
   if (l === 'Sí') return '<span class="badge b-si">CONFIRMADA</span>';
+  if (aprobacion === 'Aprobación Cliente') return '<span class="badge b-porconfirmar">POR CONFIRMAR</span>';
   return '<span class="badge b-no">PENDIENTE</span>';
 }
 
@@ -394,7 +396,7 @@ function render(){
         <td>${r.Ruta||''}</td>
         <td>${r.FecHito||''}</td>
         <td>${badgeAprob(r.EstadoAprobacion)}</td>
-        <td>${badgeLlegada(r.LlegadaConfirmada)}</td>
+        <td>${badgeLlegada(r.LlegadaConfirmada, r.EstadoAprobacion)}</td>
         <td><button class="btn-comentario ${tieneComentario?'tiene':''}" onclick="abrirModal('${encodeURIComponent(r.ID)}')">${tieneComentario ? '💬 Ver/editar' : '💬 Agregar'}</button></td>
       </tr>
     `;}).join('');

@@ -335,9 +335,9 @@ function badgeAprob(e){
   if (e === 'Aprobación Cliente') return '<span class="badge b-aprob-cliente">APROB. CLIENTE</span>';
   return '<span class="badge b-pendiente">PENDIENTE</span>';
 }
-function badgeLlegada(l, aprobacion){
+function badgeLlegada(l){
   if (l === 'Sí') return '<span class="badge b-si">CONFIRMADA</span>';
-  if (aprobacion === 'Aprobación Cliente') return '<span class="badge b-porconfirmar">POR CONFIRMAR</span>';
+  if (l === 'Por confirmar') return '<span class="badge b-porconfirmar">POR CONFIRMAR</span>';
   return '<span class="badge b-no">PENDIENTE</span>';
 }
 
@@ -396,7 +396,7 @@ function render(){
         <td>${r.Ruta||''}</td>
         <td>${r.FecHito||''}</td>
         <td>${badgeAprob(r.EstadoAprobacion)}</td>
-        <td>${badgeLlegada(r.LlegadaConfirmada, r.EstadoAprobacion)}</td>
+        <td>${badgeLlegada(r.LlegadaConfirmada)}</td>
         <td><button class="btn-comentario ${tieneComentario?'tiene':''}" onclick="abrirModal('${encodeURIComponent(r.ID)}')">${tieneComentario ? '💬 Ver/editar' : '💬 Agregar'}</button></td>
       </tr>
     `;}).join('');

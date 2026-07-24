@@ -64,6 +64,9 @@
   .b-p2{ background:#0E7490; }
   .b-p3{ background:#6B7280; }
   .b-si{ background:var(--sage); }
+  .b-aprob-interna{ background:var(--emer); }
+  .b-aprob-cliente{ background:#0EA5E9; }
+  .b-pendiente{ background:#9CA3AF; }
   .fecha-conf{ display:block; font-size:11px; color:#5F726C; margin-top:3px; }
   .tablewrap{ max-height:62vh; overflow:auto; border:1px solid var(--borde); border-radius:10px; background:#fff; }
   .foot{ font-size:11px; color:#667; margin-top:10px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
@@ -167,12 +170,13 @@
           <th>Estilo</th>
           <th>Ruta</th>
           <th>Fecha Hito</th>
+          <th>Aprobación</th>
           <th>Llegada</th>
           <th>Comentario</th>
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="13" class="estado-msg">Cargando datos...</td></tr>
+        <tr><td colspan="14" class="estado-msg">Cargando datos...</td></tr>
       </tbody>
     </table>
   </div>
@@ -215,7 +219,7 @@ function showToast(msg, isError){
 }
 
 async function cargarDatos(){
-  document.getElementById('tbody').innerHTML = '<tr><td colspan="13" class="estado-msg">Cargando datos...</td></tr>';
+  document.getElementById('tbody').innerHTML = '<tr><td colspan="14" class="estado-msg">Cargando datos...</td></tr>';
   try{
     const res = await fetch(APPS_SCRIPT_URL + '?_=' + Date.now());
     const json = await res.json();
@@ -225,7 +229,7 @@ async function cargarDatos(){
     render();
     document.getElementById('lastUpdate').textContent = 'Actualizado: ' + new Date().toLocaleString('es-PE');
   }catch(err){
-    document.getElementById('tbody').innerHTML = '<tr><td colspan="13" class="estado-msg">Error cargando datos: '+esc(err.message)+'</td></tr>';
+    document.getElementById('tbody').innerHTML = '<tr><td colspan="14" class="estado-msg">Error cargando datos: '+esc(err.message)+'</td></tr>';
   }
 }
 
@@ -260,6 +264,12 @@ function badgePrioridad(p){
   return '';
 }
 
+function badgeAprob(e){
+  if (e === 'Aprobación Interna') return '<span class="badge b-aprob-interna">APROB. INTERNA</span>';
+  if (e === 'Aprobación Cliente') return '<span class="badge b-aprob-cliente">APROB. CLIENTE</span>';
+  return '<span class="badge b-pendiente">PENDIENTE</span>';
+}
+
 function render(){
   const vGrupo = document.getElementById('fGrupo').value;
   const vRuta = document.getElementById('fRuta').value;
@@ -292,7 +302,7 @@ function render(){
 
   const tbody = document.getElementById('tbody');
   if (filtradas.length === 0){
-    tbody.innerHTML = '<tr><td colspan="13" class="estado-msg">No hay partidas confirmadas con esos filtros.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="14" class="estado-msg">No hay partidas confirmadas con esos filtros.</td></tr>';
   } else {
     tbody.innerHTML = filtradas.map(r => {
       const tieneComentario = !!(r.Comentario && String(r.Comentario).trim());
@@ -310,6 +320,7 @@ function render(){
         <td>${esc(r.Estilo)}</td>
         <td>${esc(r.Ruta)}</td>
         <td>${esc(r.FecHito)}</td>
+        <td>${badgeAprob(r.EstadoAprobacion)}</td>
         <td><span class="badge b-si">CONFIRMADA</span>${fechaConf}</td>
         <td><button class="btn-comentario ${tieneComentario?'tiene':''}" onclick="abrirModal('${encodeURIComponent(r.ID)}')" ${tieneComentario ? '' : 'disabled'}>${tieneComentario ? '💬 Ver comentario' : '— Sin comentario'}</button></td>
       </tr>

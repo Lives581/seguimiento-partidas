@@ -220,7 +220,8 @@
     <button class="secundario" onclick="cargarDatos()">↻ Recargar</button>
     <button class="secundario" onclick="limpiarFiltros()">✕ Limpiar filtros</button>
     <button class="secundario" onclick="abrirTarjetaCliente()">🖼️ Resumen visual</button>
-    <button onclick="exportarXLSX()">⬇ Exportar</button>
+    <button onclick="abrirVistaObservadores()">👁️ Vista observadores</button>
+    <button class="secundario" onclick="copiarLinkObservadores()">🔗 Copiar link</button>
   </div>
 
   <div class="tablewrap">
@@ -477,6 +478,32 @@ async function guardarComentarioModal(){
 document.getElementById('modalOverlay').addEventListener('click', function(e){
   if (e.target === this) cerrarModal();
 });
+
+// ---------- Vista de observadores (solo lectura, solo confirmadas) ----------
+const URL_OBSERVADORES = "https://iaanalistalives-ux.github.io/seguimiento-partidas/observadores.html";
+
+function abrirVistaObservadores(){
+  window.open(URL_OBSERVADORES, '_blank');
+}
+
+function copiarLinkObservadores(){
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = URL_OBSERVADORES;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); showToast('Link copiado al portapapeles'); }
+    catch(e){ window.prompt('Copia el link manualmente:', URL_OBSERVADORES); }
+    document.body.removeChild(ta);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(URL_OBSERVADORES)
+      .then(() => showToast('Link copiado al portapapeles'))
+      .catch(fallback);
+  } else {
+    fallback();
+  }
+}
 
 // ---------- Exportar Excel real (incluye comentario, para compartir con el resto) ----------
 function exportarXLSX(){

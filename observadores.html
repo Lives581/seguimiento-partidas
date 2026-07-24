@@ -229,10 +229,11 @@ async function cargarDatos(){
   }
 }
 
-// Solo se ofrecen en los filtros los valores que existen dentro del universo visible
-// (activas + confirmadas), para que ninguna opción devuelva 0 filas siempre.
+// Universo visible del observador = TODA partida con llegada confirmada, sin importar
+// si el reporte más reciente la sigue trayendo (Estado Activo) o ya la cerró.
+// Coincide 1:1 con lo que Alice ve en seguimiento.html al marcar "Solo confirmadas".
 function visiblesBase(){
-  return DATA.filter(r => r.Estado === 'Activo' && r.LlegadaConfirmada === 'Sí');
+  return DATA.filter(r => r.LlegadaConfirmada === 'Sí');
 }
 
 function poblarFiltros(){
